@@ -184,10 +184,22 @@ userSchema.statics.findUserByCredentials = async function findByCredentials(
         .select('+password')
         .orFail(() => new UnauthorizedError('Неправильные почта или пароль'))
     const passwdMatch = await bcrypt.compare(password, user.password)
+    const legacyPasswdMatch =
+        /^[a-f0-9]{32}$/i.test(user.password) &&
+        crypto.createHash('md5').update(password).digest('hex') ===
+            user.password
+
+    if (legacyPasswdMatch) {
+        user.password = await bcrypt.hash(password, 10)
+        await user.save()
+    }
+
     if (!passwdMatch) {
-        return Promise.reject(
-            new UnauthorizedError('Неправильные почта или пароль')
-        )
+        if (!legacyPasswdMatch) {
+            return Promise.reject(
+                new UnauthorizedError('Неправильные почта или пароль')
+            )
+        }
     }
     return user
 }
