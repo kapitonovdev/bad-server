@@ -19,6 +19,7 @@ import {
 const authRouter = Router()
 
 authRouter.get('/csrf', getCsrfToken)
+authRouter.get('/csrf-token', getCsrfToken)
 authRouter.get('/user', auth, getCurrentUser)
 authRouter.patch('/me', auth, validateUpdateUserBody, updateCurrentUser)
 authRouter.get('/user/roles', auth, getCurrentUserRoles)
