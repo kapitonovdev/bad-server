@@ -15,13 +15,16 @@ interface Field {
     type?: FilterType
     options?: FieldOption[]
 }
+
 interface FilterSelectedState {
     [key: string]: FieldOption
 }
+
+export type FilterValue = string | number | FieldOption | null | undefined
+
 interface FilterComponentProps {
     fields: Field[]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onFilter: (filters: Record<string, any>) => void
+    onFilter: (filters: Record<string, FilterValue>) => void
     onClear: () => void
     defaultValue?: FiltersOrder | FiltersCustomers
 }
@@ -33,7 +36,6 @@ const Filter = ({
     onClear,
 }: FilterComponentProps) => {
     const formRef = useRef<HTMLFormElement>(null)
-
     const { values, handleChange } = useFormWithValidation(
         defaultValue,
         formRef.current
@@ -42,59 +44,57 @@ const Filter = ({
 
     const renderController = useCallback(
         (field: Field) => {
-            {
-                if (!field.type) {
+            if (!field.type) {
+                return (
+                    <label
+                        key={field.label}
+                        className={styles.filter__labelFullWidth}
+                    >
+                        {field.label}
+                    </label>
+                )
+            }
+
+            switch (field.type) {
+                case FilterType.select:
                     return (
-                        <label
-                            key={field.label}
-                            className={styles.filter__labelFullWidth}
-                        >
-                            {field.label}
-                        </label>
-                    )
-                }
-                switch (field.type) {
-                    case FilterType.select:
-                        return (
-                            field.options && (
-                                <Select
-                                    title={field.label}
-                                    extraClass={styles.filter__select}
-                                    key={field.name}
-                                    options={field.options}
-                                    selected={selects[field.name!] || null}
-                                    placeholder='Выберите статус'
-                                    onChange={(option) =>
-                                        setSelects({
-                                            ...selects,
-                                            [field.name!]: option,
-                                        })
-                                    }
-                                />
-                            )
-                        )
-                    case FilterType.text:
-                    case FilterType.date:
-                    case FilterType.number:
-                        return (
-                            <Input
+                        field.options && (
+                            <Select
+                                title={field.label}
+                                extraClass={styles.filter__select}
                                 key={field.name}
-                                value={
-                                    values![
-                                        field.name as keyof typeof values
-                                    ] || ''
+                                options={field.options}
+                                selected={selects[field.name!] || null}
+                                placeholder='Выберите статус'
+                                onChange={(option) =>
+                                    setSelects((currentSelects) => ({
+                                        ...currentSelects,
+                                        [field.name!]: option,
+                                    }))
                                 }
-                                onChange={handleChange}
-                                type={field.type}
-                                name={field.name}
-                                extraClassLabel={styles.filter__label}
-                                extraClass={styles.filter__input}
-                                label={field.label}
                             />
                         )
-                    default:
-                        return null
-                }
+                    )
+                case FilterType.text:
+                case FilterType.date:
+                case FilterType.number:
+                    return (
+                        <Input
+                            key={field.name}
+                            value={
+                                values![field.name as keyof typeof values] ||
+                                ''
+                            }
+                            onChange={handleChange}
+                            type={field.type}
+                            name={field.name}
+                            extraClassLabel={styles.filter__label}
+                            extraClass={styles.filter__input}
+                            label={field.label}
+                        />
+                    )
+                default:
+                    return null
             }
         },
         [selects, handleChange, values]
@@ -111,7 +111,10 @@ const Filter = ({
                 (item) => item.value === (defaultValue as FiltersOrder)?.status
             )
             if (status) {
-                setSelects({ ...selects, status })
+                setSelects((currentSelects) => ({
+                    ...currentSelects,
+                    status,
+                }))
             }
         }
     }, [defaultValue])

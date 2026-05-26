@@ -2,8 +2,10 @@ services:
   frontend:
     build:
       context: frontend
+      args:
+        VITE_API_ORIGIN: http://localhost/api
     env_file:
-      - frontend/.env
+      - frontend/.env.example
     volumes:
       - frontend:/app/frontend/dist
 
@@ -25,7 +27,7 @@ services:
     build:
       context: backend
     env_file:
-      - backend/.env
+      - backend/.env.example
     volumes:
       - ./backend/src:/app/src
       - public:/app/src/public

@@ -1,31 +1,34 @@
 import { NextFunction, Request, Response } from 'express'
 import { constants } from 'http2'
 import { Error as MongooseError } from 'mongoose'
-import { join } from 'path'
 import BadRequestError from '../errors/bad-request-error'
 import ConflictError from '../errors/conflict-error'
 import NotFoundError from '../errors/not-found-error'
 import Product from '../models/product'
 import movingFile from '../utils/movingFile'
+import { UPLOAD_DIR, UPLOAD_TEMP_DIR } from '../utils/path'
+import { sanitizeObjectFields } from '../utils/sanitize'
+import { getQueryNumber } from '../utils/query'
 
 // GET /product
 const getProducts = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { page = 1, limit = 5 } = req.query
+        const page = getQueryNumber(req.query.page, 1, 1000)
+        const limit = getQueryNumber(req.query.limit, 5, 50)
         const options = {
-            skip: (Number(page) - 1) * Number(limit),
-            limit: Number(limit),
+            skip: (page - 1) * limit,
+            limit,
         }
         const products = await Product.find({}, null, options)
         const totalProducts = await Product.countDocuments({})
-        const totalPages = Math.ceil(totalProducts / Number(limit))
+        const totalPages = Math.ceil(totalProducts / limit)
         return res.send({
             items: products,
             pagination: {
                 totalProducts,
                 totalPages,
-                currentPage: Number(page),
-                pageSize: Number(limit),
+                currentPage: page,
+                pageSize: limit,
             },
         })
     } catch (err) {
@@ -40,14 +43,22 @@ const createProduct = async (
     next: NextFunction
 ) => {
     try {
-        const { description, category, price, title, image } = req.body
+        const { image } = req.body
+        const { description, category, price, title } = sanitizeObjectFields(
+            req.body,
+            {
+                title: 30,
+                category: 30,
+                description: 1000,
+            }
+        )
 
         // Переносим картинку из временной папки
         if (image) {
-            movingFile(
+            await movingFile(
                 image.fileName,
-                join(__dirname, `../public/${process.env.UPLOAD_PATH_TEMP}`),
-                join(__dirname, `../public/${process.env.UPLOAD_PATH}`)
+                UPLOAD_TEMP_DIR,
+                UPLOAD_DIR
             )
         }
 
@@ -82,13 +93,18 @@ const updateProduct = async (
     try {
         const { productId } = req.params
         const { image } = req.body
+        const productUpdate = sanitizeObjectFields(req.body, {
+            title: 30,
+            category: 30,
+            description: 1000,
+        })
 
         // Переносим картинку из временной папки
         if (image) {
-            movingFile(
+            await movingFile(
                 image.fileName,
-                join(__dirname, `../public/${process.env.UPLOAD_PATH_TEMP}`),
-                join(__dirname, `../public/${process.env.UPLOAD_PATH}`)
+                UPLOAD_TEMP_DIR,
+                UPLOAD_DIR
             )
         }
 
@@ -96,7 +112,7 @@ const updateProduct = async (
             productId,
             {
                 $set: {
-                    ...req.body,
+                    ...productUpdate,
                     price: req.body.price ? req.body.price : null,
                     image: req.body.image ? req.body.image : undefined,
                 },

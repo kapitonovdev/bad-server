@@ -1,21 +1,19 @@
-import { existsSync, mkdirSync, rename } from 'fs'
+import { existsSync, mkdirSync } from 'fs'
+import { rename } from 'fs/promises'
 import { basename, join } from 'path'
+import { resolvePublicPath } from './path'
 
-function movingFile(imagePath: string, from: string, to: string) {
+async function movingFile(imagePath: string, from: string, to: string) {
     const fileName = basename(imagePath)
-    const imagePathTemp = join(from, fileName)
-    const imagePathPermanent = join(to, fileName)
+    const imagePathTemp = resolvePublicPath(join(from, fileName))
+    const imagePathPermanent = resolvePublicPath(join(to, fileName))
 
-    mkdirSync(to, { recursive: true })
+    mkdirSync(resolvePublicPath(to), { recursive: true })
     if (!existsSync(imagePathTemp)) {
         throw new Error('Ошибка при сохранении файла')
     }
 
-    rename(imagePathTemp, imagePathPermanent, (err) => {
-        if (err) {
-            throw new Error('Ошибка при сохранении файла')
-        }
-    })
+    await rename(imagePathTemp, imagePathPermanent)
 }
 
 export default movingFile
