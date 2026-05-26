@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express'
+import BadRequestError from '../errors/bad-request-error'
 
 type PlainObject = Record<string, unknown>
 
@@ -33,7 +34,7 @@ export function sanitizeInput<T>(input: T): T {
     if (isPlainObject(input)) {
         return Object.entries(input).reduce<PlainObject>((acc, [key, value]) => {
             if (key.startsWith('$') || key.includes('.')) {
-                return acc
+                throw new BadRequestError('Недопустимые параметры запроса')
             }
             acc[key] = sanitizeInput(value)
             return acc

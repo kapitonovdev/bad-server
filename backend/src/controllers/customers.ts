@@ -41,7 +41,7 @@ export const getCustomers = async (
             search,
         } = req.query
         const page = getQueryNumber(req.query.page, 1, 1000)
-        const limit = getQueryNumber(req.query.limit, 10, 50)
+        const limit = getQueryNumber(req.query.limit, 10, 10)
 
         const filters: FilterQuery<Partial<IUser>> = {}
 

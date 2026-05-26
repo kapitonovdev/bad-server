@@ -7,7 +7,7 @@ import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
 import mongoose from 'mongoose'
 import path from 'path'
-import { COOKIE_SECRET, DB_ADDRESS, ORIGIN_ALLOW } from './config'
+import { COOKIE_SECRET, DB_ADDRESS } from './config'
 import csrfProtection from './middlewares/csrf'
 import errorHandler from './middlewares/error-handler'
 import { sanitizeRequest } from './utils/sanitize'
@@ -17,13 +17,7 @@ const { PORT = 3000 } = process.env
 const app = express()
 
 const corsOptions: CorsOptions = {
-    origin(origin, callback) {
-        if (!origin || ORIGIN_ALLOW.includes(origin)) {
-            return callback(null, true)
-        }
-
-        return callback(new Error('Not allowed by CORS'))
-    },
+    origin: 'http://localhost:5173',
     credentials: true,
 }
 
@@ -34,7 +28,7 @@ app.use(helmet())
 app.use(
     rateLimit({
         windowMs: 60 * 1000,
-        limit: 600,
+        limit: 50,
         standardHeaders: true,
         legacyHeaders: false,
         message: { message: 'Слишком много запросов' },

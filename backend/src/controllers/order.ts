@@ -41,7 +41,7 @@ export const getOrders = async (
             search,
         } = req.query
         const page = getQueryNumber(req.query.page, 1, 1000)
-        const limit = getQueryNumber(req.query.limit, 10, 50)
+        const limit = getQueryNumber(req.query.limit, 10, 10)
 
         const filters: FilterQuery<Partial<IOrder>> = {}
 
@@ -170,7 +170,7 @@ export const getOrdersCurrentUser = async (
         const userId = res.locals.user._id
         const { search } = req.query
         const page = getQueryNumber(req.query.page, 1, 1000)
-        const limit = getQueryNumber(req.query.limit, 5, 50)
+        const limit = getQueryNumber(req.query.limit, 5, 10)
         const options = {
             skip: (page - 1) * limit,
             limit,
