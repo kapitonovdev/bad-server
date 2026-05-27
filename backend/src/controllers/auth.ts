@@ -9,6 +9,7 @@ import ConflictError from '../errors/conflict-error'
 import NotFoundError from '../errors/not-found-error'
 import UnauthorizedError from '../errors/unauthorized-error'
 import User from '../models/user'
+import { sanitizeObjectFields } from '../utils/sanitize'
 
 // POST /auth/login
 const login = async (req: Request, res: Response, next: NextFunction) => {
@@ -36,7 +37,11 @@ const login = async (req: Request, res: Response, next: NextFunction) => {
 const register = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, password, name } = req.body
-        const newUser = new User({ email, password, name })
+        const newUser = new User({
+            email,
+            password,
+            name: typeof name === 'string' ? name : undefined,
+        })
         await newUser.save()
         const accessToken = newUser.generateAccessToken()
         const refreshToken = await newUser.generateRefreshToken()
@@ -110,6 +115,14 @@ const deleteRefreshTokenInUser = async (
         .update(rfTkn)
         .digest('hex')
 
+    const hasRefreshToken = user.tokens.some(
+        (tokenObj) => tokenObj.token === rTknHash
+    )
+
+    if (!hasRefreshToken) {
+        throw new UnauthorizedError('Не валидный токен')
+    }
+
     user.tokens = user.tokens.filter((tokenObj) => tokenObj.token !== rTknHash)
 
     await user.save()
@@ -165,20 +178,11 @@ const refreshAccessToken = async (
 }
 
 const getCurrentUserRoles = async (
-    req: Request,
+    _req: Request,
     res: Response,
     next: NextFunction
 ) => {
-    const userId = res.locals.user._id
     try {
-        await User.findById(userId, req.body, {
-            new: true,
-        }).orFail(
-            () =>
-                new NotFoundError(
-                    'Пользователь по заданному id отсутствует в базе'
-                )
-        )
         res.status(200).json(res.locals.user.roles)
     } catch (error) {
         next(error)
@@ -192,9 +196,25 @@ const updateCurrentUser = async (
 ) => {
     const userId = res.locals.user._id
     try {
-        const updatedUser = await User.findByIdAndUpdate(userId, req.body, {
-            new: true,
-        }).orFail(
+        const { name, email, phone } = sanitizeObjectFields(req.body, {
+            name: 30,
+            email: 254,
+            phone: 20,
+        })
+        const update: Record<string, unknown> = {}
+        Object.entries({ name, email, phone }).forEach(([key, value]) => {
+            if (value !== undefined) {
+                update[key] = value
+            }
+        })
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: update },
+            {
+                new: true,
+                runValidators: true,
+            }
+        ).orFail(
             () =>
                 new NotFoundError(
                     'Пользователь по заданному id отсутствует в базе'
